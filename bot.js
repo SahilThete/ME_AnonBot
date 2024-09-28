@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 require('dotenv').config();
@@ -23,6 +23,10 @@ const guildId = '1121136965622956132'; // Ensure this is a string
 
 // Register slash commands
 const commands = [
+    {
+        name: 'ping',
+        description: 'Check the bot\'s latency',
+    },
     {
         name: 'create',
         description: 'Create a custom anonymous handle',
@@ -56,6 +60,22 @@ client.once('ready', () => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
+    // Handle the ping command
+    if (interaction.commandName === 'ping') {
+        const pingEmbed = new EmbedBuilder()
+            .setColor('#0099ff')
+            .setTitle('🏓 Pong!')
+            .addFields(
+                { name: 'Latency', value: `${Math.round(client.ws.ping)} ms`, inline: true },
+                { name: 'API Latency', value: `${Date.now() - interaction.createdTimestamp} ms`, inline: true }
+            )
+            .setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [pingEmbed] });
+    }
+
+    // Create a custom handle
     if (interaction.commandName === 'create') {
         const userId = interaction.user.id;
         const customHandle = interaction.options.getString('handle');
@@ -87,17 +107,43 @@ client.on('messageCreate', async message => {
         const userId = message.author.id;
         const anonMessage = message.content.slice(6).trim(); // Strip "!anon" part
 
+        // Check if the message contains an anonymous handle
+        const mentionedHandleMatch = anonMessage.match(/(anon\d{4})/); // Regex to match 'anonXXXX'
+        let notifiedUserId = null;
+
+        if (mentionedHandleMatch) {
+            const mentionedHandle = mentionedHandleMatch[0];
+
+            // Find the user associated with the mentioned handle
+            const userHandle = await Handle.findOne({ handle: mentionedHandle });
+
+            if (userHandle) {
+                notifiedUserId = userHandle.userId; // Get the user ID associated with the handle
+            }
+        }
+
+        // Retrieve the user's handle from the database
         const userHandle = await Handle.findOne({ userId });
 
         if (!userHandle) {
             return message.reply("You haven't set a handle yet! Use /create to set one.");
         }
 
+        // Send the anonymous message
         if (anonMessage) {
             await message.channel.send(`**${userHandle.handle}:** ${anonMessage}`);
-            await message.delete();
+            await message.delete(); // Optionally delete the original message
+        }
+
+        // Notify the mentioned user if found
+        if (notifiedUserId) {
+            const mentionedUser = await client.users.fetch(notifiedUserId);
+            if (mentionedUser) {
+                await mentionedUser.send(`You have a new message from **${userHandle.handle}**: ${anonMessage}`);
+            }
         }
     }
 });
+
 
 client.login(token);
