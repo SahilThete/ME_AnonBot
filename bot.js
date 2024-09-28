@@ -204,7 +204,7 @@ client.on('interactionCreate', async interaction => {
             // List admin commands if the user is an admin
             embed.addFields(
                 { name: '**/admin**', value: 'Admin commands', inline: false },
-                { name: 'Subcommands:', value: '**- viewhandles**: View all anonymous handles\n**- analytics**: View analytics about the bot\n**- manage**: Manage admin access', inline: false }
+                { name: 'Subcommands:', value: '**- viewhandles** - View all anonymous handles\n**- analytics** - View analytics about the bot\n**- manage** - Manage admin access', inline: false }
             );
         }
 
