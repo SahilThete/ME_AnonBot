@@ -21,11 +21,11 @@ Create a custom anonymous handle.
 
 1. To create an anonymous handle, type:
    ```
-   /create handle
+   /create <custom-anon-handle>
    ```
 2. To send an anonymous message, type:
    ```
-   !anon Your message here
+   !anon <Your message here>
    ```
 
 ## Getting Started
