@@ -47,6 +47,14 @@ const commands = [
         ],
     },
     {
+        name: 'viewhandle',
+        description: 'View your current anonymous handle',
+    },
+    {
+        name: 'help',
+        description: 'Get a list of commands and their usage',
+    },
+    {
         name: 'admin',
         description: 'Admin commands',
         options: [
@@ -172,6 +180,35 @@ client.on('interactionCreate', async interaction => {
             content: `Your current anonymous handle is **${userHandle.handle}**.`,
             ephemeral: true,
         });
+    }
+    
+    // Help command
+    if (interaction.commandName === 'help') {
+        const embed = new EmbedBuilder()
+            .setColor('#0099ff')
+            .setTitle('Help - Available Commands');
+
+        // List general commands
+        embed.addFields(
+            { name: '**/ping**', value: 'Check the bot\'s latency', inline: false },
+            { name: '**/create**', value: 'Create a custom anonymous handle', inline: false },
+            { name: '**/viewhandle**', value: 'View your current anonymous handle', inline: false },
+            { name: '**/help**', value: 'Get a list of commands and their usage', inline: false },
+        );
+
+        // Check if the user is God Admin or Admin
+        const isGod = await isGodAdmin(interaction.user.id);
+        const isAdminUser = await isAdmin(interaction.user.id);
+
+        if (isGod || isAdminUser) {
+            // List admin commands if the user is an admin
+            embed.addFields(
+                { name: '**/admin**', value: 'Admin commands', inline: false },
+                { name: 'Subcommands:', value: '**- viewhandles**: View all anonymous handles\n**- analytics**: View analytics about the bot\n**- manage**: Manage admin access', inline: false }
+            );
+        }
+
+        await interaction.reply({ embeds: [embed] });
     }
 
     // Admin commands
