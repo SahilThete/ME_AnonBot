@@ -27,7 +27,6 @@ const client = new Client({
 const token = process.env.BOT_TOKEN;
 const clientId = '1289536538333548606'; // Ensure this is a string
 const guildId = '1121136965622956132'; // Ensure this is a string
-const godAdminId = process.env.GOD_ADMIN_ID; // Get God Admin ID from .env file
 
 // Register slash commands
 const commands = [
@@ -154,6 +153,24 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({
             content: `Your anonymous handle has been set to **${customHandle}**!`,
             ephemeral: true
+        });
+    }
+
+    // View current anonymous handle
+    if (interaction.commandName === 'viewhandle') {
+        const userId = interaction.user.id;
+        const userHandle = await Handle.findOne({ userId });
+
+        if (!userHandle) {
+            return await interaction.reply({
+                content: "You haven't set a handle yet! Use /create to set one.",
+                ephemeral: true,
+            });
+        }
+
+        await interaction.reply({
+            content: `Your current anonymous handle is **${userHandle.handle}**.`,
+            ephemeral: true,
         });
     }
 
