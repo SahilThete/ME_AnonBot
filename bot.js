@@ -11,8 +11,9 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 // Create a schema for admins
 const adminSchema = new mongoose.Schema({
     userId: { type: String, required: true, unique: true },
-    isGod: { type: Boolean, default: false },
 });
+
+const Admin = mongoose.model('Admin', adminSchema);
 
 const client = new Client({
     intents: [
@@ -26,6 +27,7 @@ const client = new Client({
 const token = process.env.BOT_TOKEN;
 const clientId = '1289536538333548606'; // Ensure this is a string
 const guildId = '1121136965622956132'; // Ensure this is a string
+const godAdminId = process.env.GOD_ADMIN_ID; // Get God Admin ID from .env file
 
 // Register slash commands
 const commands = [
@@ -102,11 +104,11 @@ async function isAdmin(userId) {
     return admin !== null;
 }
 
-// Check if user is God Admin
-async function isGodAdmin(userId) {
-    const admin = await Admin.findOne({ userId, isGod: true });
-    return admin !== null;
-}
+// Function to check if a user is a God Admin
+const isGodAdmin = async (userId) => {
+    const godAdminIds = process.env.GOD_ADMIN_IDS.split(',').map(id => id.trim());
+    return godAdminIds.includes(userId);
+};
 
 // Command interaction
 client.on('interactionCreate', async interaction => {
@@ -114,12 +116,15 @@ client.on('interactionCreate', async interaction => {
 
     // Handle the ping command
     if (interaction.commandName === 'ping') {
+        const latency = Math.round(client.ws.ping);
+        const apiLatency = Date.now() - interaction.createdTimestamp;
+
         const pingEmbed = new EmbedBuilder()
             .setColor('#0099ff')
             .setTitle('🏓 Pong!')
             .addFields(
-                { name: 'Latency', value: `${Math.round(client.ws.ping)} ms`, inline: true },
-                { name: 'API Latency', value: `${Date.now() - interaction.createdTimestamp} ms`, inline: true }
+                { name: 'Latency', value: `${latency} ms`, inline: true },
+                { name: 'API Latency', value: `${apiLatency} ms`, inline: true }
             )
             .setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
@@ -154,61 +159,87 @@ client.on('interactionCreate', async interaction => {
 
     // Admin commands
     if (interaction.commandName === 'admin') {
-        // Check if the user is God Admin
+        // Check if the user is God Admin or Admin
         const isGod = await isGodAdmin(interaction.user.id);
-        if (!isGod) {
-            return await interaction.reply({
-                content: 'You do not have permission to use this command.',
-                ephemeral: true,
-            });
-        }
+        const isAdminUser = await isAdmin(interaction.user.id);
 
         if (interaction.options.getSubcommand() === 'viewhandles') {
-            const allHandles = await Handle.find({});
-            const handlesList = allHandles.map(h => `User ID: ${h.userId}, Handle: ${h.handle}`).join('\n') || 'No handles found.';
+            // If the user is not God Admin or Admin, deny access
+            if (!isGod && !isAdminUser) {
+                return await interaction.reply({
+                    content: 'You do not have permission to use this command.',
+                    ephemeral: true,
+                });
+            }
 
-            const handlesEmbed = new EmbedBuilder()
+            // Fetch all handles from the database
+            const handles = await Handle.find();
+            const embed = new EmbedBuilder()
                 .setColor('#0099ff')
-                .setTitle('All Anonymous Handles')
-                .setDescription(handlesList);
+                .setTitle('All Anonymous Handles');
 
-            await interaction.reply({ embeds: [handlesEmbed] });
-        }
-
-        if (interaction.options.getSubcommand() === 'analytics') {
-            const totalHandles = await Handle.countDocuments({});
-            const analyticsEmbed = new EmbedBuilder()
-                .setColor('#0099ff')
-                .setTitle('Bot Analytics')
-                .addFields(
-                    { name: 'Total Anonymous Handles', value: `${totalHandles}`, inline: true },
+            handles.forEach(handle => {
+                embed.addFields(
+                    { name: `**User ID:** ${handle.userId}`, value: `**Handle:** ${handle.handle}`, inline: false }
                 );
+            });
 
-            await interaction.reply({ embeds: [analyticsEmbed] });
+            await interaction.reply({ embeds: [embed] });
         }
 
         // Manage admin access
         if (interaction.options.getSubcommand() === 'manage') {
+            if (!isGod) {
+                return await interaction.reply({
+                    content: 'You do not have permission to manage admin access.',
+                    ephemeral: true,
+                });
+            }
+
             const addUserId = interaction.options.getUser('add')?.id;
             const removeUserId = interaction.options.getUser('remove')?.id;
 
             // Add admin
             if (addUserId) {
+                const existingAdmin = await Admin.findOne({ userId: addUserId });
+                
+                if (existingAdmin) {
+                    return await interaction.reply({
+                        content: `<@${addUserId}> is already an admin.`,
+                        ephemeral: true
+                    });
+                }
+
                 const admin = new Admin({ userId: addUserId });
                 await admin.save();
-                return await interaction.reply({ content: `<@${addUserId}> has been added as an admin.`, ephemeral: true });
+                return await interaction.reply({
+                    content: `<@${addUserId}> has been added as an admin.`,
+                    ephemeral: true
+                });
             }
 
             // Remove admin
             if (removeUserId) {
+                const existingAdmin = await Admin.findOne({ userId: removeUserId });
+
+                if (!existingAdmin) {
+                    return await interaction.reply({
+                        content: `<@${removeUserId}> is not an admin.`,
+                        ephemeral: true
+                    });
+                }
+
                 await Admin.deleteOne({ userId: removeUserId });
-                return await interaction.reply({ content: `<@${removeUserId}> has been removed from admin status.`, ephemeral: true });
+                return await interaction.reply({
+                    content: `<@${removeUserId}> has been removed from admin status.`,
+                    ephemeral: true
+                });
             }
         }
     }
 });
 
-// Add Anon Messaging
+// Anonymous Messaging
 client.on('messageCreate', async message => {
     if (message.content.startsWith('!anon')) {
         const userId = message.author.id;
