@@ -8,6 +8,12 @@ const Handle = require('./db'); // Ensure you have this model defined correctly
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
+// Create a schema for admins
+const adminSchema = new mongoose.Schema({
+    userId: { type: String, required: true, unique: true },
+    isGod: { type: Boolean, default: false },
+});
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -38,7 +44,40 @@ const commands = [
                 required: true, // This can be kept since STRING supports required
             }
         ],
-    }
+    },
+    {
+        name: 'admin',
+        description: 'Admin commands',
+        options: [
+            {
+                name: 'viewhandles',
+                type: 1, // Subcommand type
+                description: 'View all anonymous handles',
+            },
+            {
+                name: 'analytics',
+                type: 1, // Subcommand type
+                description: 'View analytics about the bot',
+            },
+            {
+                name: 'manage',
+                type: 1, // Subcommand type
+                description: 'Manage admin access',
+                options: [
+                    {
+                        name: 'add',
+                        type: 6, // User type
+                        description: 'User to add as admin',
+                    },
+                    {
+                        name: 'remove',
+                        type: 6, // User type
+                        description: 'User to remove from admin',
+                    },
+                ],
+            },
+        ],
+    },
 ];
 
 const rest = new REST({ version: '9' }).setToken(token);
@@ -57,6 +96,19 @@ client.once('ready', () => {
     console.log(`${client.user.tag} is now online!`);
 });
 
+// Middleware for admin check
+async function isAdmin(userId) {
+    const admin = await Admin.findOne({ userId });
+    return admin !== null;
+}
+
+// Check if user is God Admin
+async function isGodAdmin(userId) {
+    const admin = await Admin.findOne({ userId, isGod: true });
+    return admin !== null;
+}
+
+// Command interaction
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
@@ -98,6 +150,61 @@ client.on('interactionCreate', async interaction => {
             content: `Your anonymous handle has been set to **${customHandle}**!`,
             ephemeral: true
         });
+    }
+
+    // Admin commands
+    if (interaction.commandName === 'admin') {
+        // Check if the user is God Admin
+        const isGod = await isGodAdmin(interaction.user.id);
+        if (!isGod) {
+            return await interaction.reply({
+                content: 'You do not have permission to use this command.',
+                ephemeral: true,
+            });
+        }
+
+        if (interaction.options.getSubcommand() === 'viewhandles') {
+            const allHandles = await Handle.find({});
+            const handlesList = allHandles.map(h => `User ID: ${h.userId}, Handle: ${h.handle}`).join('\n') || 'No handles found.';
+
+            const handlesEmbed = new EmbedBuilder()
+                .setColor('#0099ff')
+                .setTitle('All Anonymous Handles')
+                .setDescription(handlesList);
+
+            await interaction.reply({ embeds: [handlesEmbed] });
+        }
+
+        if (interaction.options.getSubcommand() === 'analytics') {
+            const totalHandles = await Handle.countDocuments({});
+            const analyticsEmbed = new EmbedBuilder()
+                .setColor('#0099ff')
+                .setTitle('Bot Analytics')
+                .addFields(
+                    { name: 'Total Anonymous Handles', value: `${totalHandles}`, inline: true },
+                );
+
+            await interaction.reply({ embeds: [analyticsEmbed] });
+        }
+
+        // Manage admin access
+        if (interaction.options.getSubcommand() === 'manage') {
+            const addUserId = interaction.options.getUser('add')?.id;
+            const removeUserId = interaction.options.getUser('remove')?.id;
+
+            // Add admin
+            if (addUserId) {
+                const admin = new Admin({ userId: addUserId });
+                await admin.save();
+                return await interaction.reply({ content: `<@${addUserId}> has been added as an admin.`, ephemeral: true });
+            }
+
+            // Remove admin
+            if (removeUserId) {
+                await Admin.deleteOne({ userId: removeUserId });
+                return await interaction.reply({ content: `<@${removeUserId}> has been removed from admin status.`, ephemeral: true });
+            }
+        }
     }
 });
 
