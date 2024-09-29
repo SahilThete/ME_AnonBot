@@ -3,7 +3,7 @@ const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Handle = require('./db'); // Ensure you have this model defined correctly
+const { UserHandle, DarkWebChannel } = require('./db'); // Ensure you have this model
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -49,6 +49,18 @@ const commands = [
     {
         name: 'viewhandle',
         description: 'View your current anonymous handle',
+    },
+    {
+        name: 'setchannel',
+        description: 'Set a channel as the dark web conversation channel',
+        options: [
+            {
+                name: 'channel',
+                type: 7, // Type 7 is for channel
+                description: 'The channel to set as the dark web conversation channel',
+                required: true,
+            },
+        ],
     },
     {
         name: 'help',
@@ -145,7 +157,7 @@ client.on('interactionCreate', async interaction => {
         const customHandle = interaction.options.getString('handle');
 
         // Check if handle is already taken
-        const existingHandle = await Handle.findOne({ handle: customHandle });
+        const existingHandle = await UserHandle.findOne({ handle: customHandle });
 
         if (existingHandle) {
             return await interaction.reply({
@@ -155,7 +167,7 @@ client.on('interactionCreate', async interaction => {
         }
 
         // Save handle in the database
-        const userHandle = new Handle({ userId, handle: customHandle });
+        const userHandle = new UserHandle({ userId, handle: customHandle });
         await userHandle.save();
 
         await interaction.reply({
@@ -167,7 +179,7 @@ client.on('interactionCreate', async interaction => {
     // View current anonymous handle
     if (interaction.commandName === 'viewhandle') {
         const userId = interaction.user.id;
-        const userHandle = await Handle.findOne({ userId });
+        const userHandle = await UserHandle.findOne({ userId });
 
         if (!userHandle) {
             return await interaction.reply({
@@ -179,6 +191,40 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({
             content: `Your current anonymous handle is **${userHandle.handle}**.`,
             ephemeral: true,
+        });
+    }
+
+    // Handle the /setchannel command
+    if (interaction.commandName === 'setchannel') {
+        const isGod = await isGodAdmin(interaction.user.id);
+        const isAdminUser = await isAdmin(interaction.user.id);
+
+        // Check if the user is an admin or God Admin
+        if (!isGod && !isAdminUser) {
+            return await interaction.reply({
+                content: 'You do not have permission to use this command.',
+                ephemeral: true,
+            });
+        }
+
+        // Get the selected channel
+        const channel = interaction.options.getChannel('channel');
+        
+        // Store the dark web channel in the database
+        let darkWebChannel = await DarkWebChannel.findOne({ guildId: interaction.guild.id });
+        if (darkWebChannel) {
+            darkWebChannel.channelId = channel.id; // Update existing record
+        } else {
+            darkWebChannel = new DarkWebChannel({
+                guildId: interaction.guild.id,
+                channelId: channel.id,
+            });
+        }
+        await darkWebChannel.save();
+
+        await interaction.reply({
+            content: `The dark web conversation channel has been set to <#${channel.id}>.`,
+            ephemeral: false,
         });
     }
     
@@ -227,7 +273,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             // Fetch all handles from the database
-            const handles = await Handle.find();
+            const handles = await UserHandle.find();
             const embed = new EmbedBuilder()
                 .setColor('#0099ff')
                 .setTitle('All Anonymous Handles');
@@ -295,11 +341,44 @@ client.on('interactionCreate', async interaction => {
 
 // Anonymous Messaging
 client.on('messageCreate', async message => {
+    // Ignore messages from bots
+    if (message.author.bot) return;
+
+    // Get the dark web channel from the database
+    const darkWebChannel = await DarkWebChannel.findOne({ guildId: message.guild.id });
+
+    // Check if the message starts with "!anon"
     if (message.content.startsWith('!anon')) {
         const userId = message.author.id;
         const anonMessage = message.content.slice(6).trim(); // Strip "!anon" part
 
-        // Check if the message contains an anonymous handle
+        // Check if the message is being sent in the dark web channel
+        if (!darkWebChannel || message.channel.id !== darkWebChannel.channelId) {
+            // Reply with a clickable link to the dark web channel if the message is sent outside of it
+            if (darkWebChannel) {
+                return message.reply({
+                    content: `Please send anonymous messages in the designated dark web channel: <#${darkWebChannel.channelId}>.`,
+                    ephemeral: true // Only visible to the user who sent the message
+                });
+            } else {
+                return message.reply({
+                    content: "The dark web channel has not been set. Please contact an admin.",
+                    ephemeral: true
+                });
+            }
+        }
+
+        // Handle anonymous message logic if sent in the correct channel
+        const userHandle = await UserHandle.findOne({ userId });
+
+        if (!userHandle) {
+            return message.reply({
+                content: "You haven't set a handle yet! Use /create to set one.",
+                ephemeral: true
+            });
+        }
+
+        // Check if the message contains a referenced handle (e.g., 'anonXXXX')
         const mentionedHandleMatch = anonMessage.match(/(anon\d{4})/); // Regex to match 'anonXXXX'
         let notifiedUserId = null;
 
@@ -307,18 +386,11 @@ client.on('messageCreate', async message => {
             const mentionedHandle = mentionedHandleMatch[0];
 
             // Find the user associated with the mentioned handle
-            const userHandle = await Handle.findOne({ handle: mentionedHandle });
+            const mentionedUserHandle = await UserHandle.findOne({ handle: mentionedHandle });
 
-            if (userHandle) {
-                notifiedUserId = userHandle.userId; // Get the user ID associated with the handle
+            if (mentionedUserHandle) {
+                notifiedUserId = mentionedUserHandle.userId; // Get the user ID associated with the handle
             }
-        }
-
-        // Retrieve the user's handle from the database
-        const userHandle = await Handle.findOne({ userId });
-
-        if (!userHandle) {
-            return message.reply("You haven't set a handle yet! Use /create to set one.");
         }
 
         // Send the anonymous message
@@ -331,7 +403,7 @@ client.on('messageCreate', async message => {
         if (notifiedUserId) {
             const mentionedUser = await client.users.fetch(notifiedUserId);
             if (mentionedUser) {
-                await mentionedUser.send(`You have a new message from **${userHandle.handle}**: ${anonMessage}`);
+                await mentionedUser.send(`You have a new anonymous message from **${userHandle.handle}**: ${anonMessage}`);
             }
         }
     }
