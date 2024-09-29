@@ -6,7 +6,9 @@ const mongoose = require('mongoose');
 const { UserHandle, DarkWebChannel } = require('./db'); // Ensure you have this model
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('MongoDB connected!'))
+    .catch(err => console.error('MongoDB connection error:', err));
 
 // Create a schema for admins
 const adminSchema = new mongoose.Schema({
@@ -109,7 +111,7 @@ const rest = new REST({ version: '9' }).setToken(token);
         await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
         console.log('Slash commands registered!');
     } catch (error) {
-        console.error(error);
+        console.error('Error registering commands:', error); // Improved logging
     }
 })();
 
@@ -157,7 +159,7 @@ client.on('interactionCreate', async interaction => {
         const customHandle = interaction.options.getString('handle');
 
         // Check if handle is already taken
-        const existingHandle = await UserHandle.findOne({ handle: customHandle });
+        const existingHandle = await UserHandle.findOne({ handle: customHandle, guildId });
 
         if (existingHandle) {
             return await interaction.reply({
@@ -167,7 +169,7 @@ client.on('interactionCreate', async interaction => {
         }
 
         // Save handle in the database
-        const userHandle = new UserHandle({ userId, handle: customHandle });
+        const userHandle = new UserHandle({ userId, guildId: interaction.guild.id, handle: customHandle });
         await userHandle.save();
 
         await interaction.reply({
@@ -179,7 +181,7 @@ client.on('interactionCreate', async interaction => {
     // View current anonymous handle
     if (interaction.commandName === 'viewhandle') {
         const userId = interaction.user.id;
-        const userHandle = await UserHandle.findOne({ userId });
+        const userHandle = await UserHandle.findOne({ userId, guildId: interaction.guild.id });
 
         if (!userHandle) {
             return await interaction.reply({
@@ -239,6 +241,7 @@ client.on('interactionCreate', async interaction => {
             { name: '**/ping**', value: 'Check the bot\'s latency', inline: false },
             { name: '**/create**', value: 'Create a custom anonymous handle', inline: false },
             { name: '**/viewhandle**', value: 'View your current anonymous handle', inline: false },
+            { name: '**/setchannel** (admin-only)', value: 'Set a channel as the dark web conversation channel', inline: false },
             { name: '**/help**', value: 'Get a list of commands and their usage', inline: false },
         );
 
@@ -338,6 +341,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 });
+
 
 // Anonymous Messaging
 client.on('messageCreate', async message => {
