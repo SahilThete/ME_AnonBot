@@ -3,7 +3,7 @@ const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { UserHandle, DarkWebChannel } = require('./db'); // Ensure you have this model
+const { UserHandle, DarkWebChannel, AdminAction } = require('./db'); // Ensure you have this model
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -154,47 +154,60 @@ client.on('interactionCreate', async interaction => {
     }
 
     // Create a custom handle
-    if (interaction.commandName === 'create') {
-        const userId = interaction.user.id;
-        const customHandle = interaction.options.getString('handle');
+if (interaction.commandName === 'create') {
+    const userId = interaction.user.id;
+    const guildId = interaction.guild.id; // Ensure it's guild-specific
+    const customHandle = interaction.options.getString('handle');
 
-        // Check if handle is already taken
-        const existingHandle = await UserHandle.findOne({ handle: customHandle, guildId });
-
-        if (existingHandle) {
-            return await interaction.reply({
-                content: 'This handle is already taken! Try another one.',
-                ephemeral: true
-            });
-        }
-
-        // Save handle in the database
-        const userHandle = new UserHandle({ userId, guildId: interaction.guild.id, handle: customHandle });
-        await userHandle.save();
-
-        await interaction.reply({
-            content: `Your anonymous handle has been set to **${customHandle}**!`,
+    // Ensure the handle follows the 'anonXXXX' format
+    const handlePattern = /^anon\d{4}$/;
+    if (!handlePattern.test(customHandle)) {
+        return await interaction.reply({
+            content: 'Invalid handle format! Please use the format "anonXXXX" where XXXX is a 4-digit number.',
             ephemeral: true
         });
     }
 
-    // View current anonymous handle
-    if (interaction.commandName === 'viewhandle') {
-        const userId = interaction.user.id;
-        const userHandle = await UserHandle.findOne({ userId, guildId: interaction.guild.id });
+    // Check if the handle is already taken in the current guild
+    const existingHandle = await UserHandle.findOne({ handle: customHandle, guildId });
 
-        if (!userHandle) {
-            return await interaction.reply({
-                content: "You haven't set a handle yet! Use /create to set one.",
-                ephemeral: true,
-            });
-        }
+    if (existingHandle) {
+        return await interaction.reply({
+            content: 'This handle is already taken in this server! Try another one.',
+            ephemeral: true
+        });
+    }
 
-        await interaction.reply({
-            content: `Your current anonymous handle is **${userHandle.handle}**.`,
+    // Save the handle for the user, scoped to the current guild
+    const userHandle = new UserHandle({ userId, guildId, handle: customHandle });
+    await userHandle.save();
+
+    await interaction.reply({
+        content: `Your anonymous handle has been set to **${customHandle}** in this server!`,
+        ephemeral: true
+    });
+}
+
+// View current anonymous handle
+if (interaction.commandName === 'viewhandle') {
+    const userId = interaction.user.id;
+    const guildId = interaction.guild.id; // Ensure it's guild-specific
+
+    // Retrieve the user's handle for the current guild
+    const userHandle = await UserHandle.findOne({ userId, guildId });
+
+    if (!userHandle) {
+        return await interaction.reply({
+            content: "You haven't set a handle yet in this server! Use /create to set one.",
             ephemeral: true,
         });
     }
+
+    await interaction.reply({
+        content: `Your current anonymous handle in this server is **${userHandle.handle}**.`,
+        ephemeral: true,
+    });
+}
 
     // Handle the /setchannel command
     if (interaction.commandName === 'setchannel') {
@@ -274,21 +287,23 @@ client.on('interactionCreate', async interaction => {
                     ephemeral: true,
                 });
             }
-
-            // Fetch all handles from the database
-            const handles = await UserHandle.find();
+        
+            // Fetch all handles for the current guild from the database
+            const handles = await UserHandle.find({ guildId: interaction.guild.id });
+            
             const embed = new EmbedBuilder()
                 .setColor('#0099ff')
                 .setTitle('All Anonymous Handles');
-
+        
             handles.forEach(handle => {
                 embed.addFields(
                     { name: `**User ID:** ${handle.userId}`, value: `**Handle:** ${handle.handle}`, inline: false }
                 );
             });
-
+        
             await interaction.reply({ embeds: [embed] });
         }
+        
 
         // Manage admin access
         if (interaction.options.getSubcommand() === 'manage') {
@@ -298,10 +313,10 @@ client.on('interactionCreate', async interaction => {
                     ephemeral: true,
                 });
             }
-
+        
             const addUserId = interaction.options.getUser('add')?.id;
             const removeUserId = interaction.options.getUser('remove')?.id;
-
+        
             // Add admin
             if (addUserId) {
                 const existingAdmin = await Admin.findOne({ userId: addUserId });
@@ -312,27 +327,47 @@ client.on('interactionCreate', async interaction => {
                         ephemeral: true
                     });
                 }
-
+        
                 const admin = new Admin({ userId: addUserId });
                 await admin.save();
+        
+                // Log the action in the database
+                const action = new AdminAction({
+                    actionType: 'add',
+                    performedBy: interaction.user.id, // The user who performed the action
+                    targetUserId: addUserId, // The user added as admin
+                    guildId: interaction.guild.id // Server ID
+                });
+                await action.save();
+        
                 return await interaction.reply({
                     content: `<@${addUserId}> has been added as an admin.`,
                     ephemeral: true
                 });
             }
-
+        
             // Remove admin
             if (removeUserId) {
                 const existingAdmin = await Admin.findOne({ userId: removeUserId });
-
+        
                 if (!existingAdmin) {
                     return await interaction.reply({
                         content: `<@${removeUserId}> is not an admin.`,
                         ephemeral: true
                     });
                 }
-
+        
                 await Admin.deleteOne({ userId: removeUserId });
+        
+                // Log the action in the database
+                const action = new AdminAction({
+                    actionType: 'remove',
+                    performedBy: interaction.user.id, // The user who performed the action
+                    targetUserId: removeUserId, // The user removed as admin
+                    guildId: interaction.guild.id // Server ID
+                });
+                await action.save();
+        
                 return await interaction.reply({
                     content: `<@${removeUserId}> has been removed from admin status.`,
                     ephemeral: true
@@ -407,9 +442,22 @@ client.on('messageCreate', async message => {
         if (notifiedUserId) {
             const mentionedUser = await client.users.fetch(notifiedUserId);
             if (mentionedUser) {
-                await mentionedUser.send(`You have a new anonymous message from **${userHandle.handle}**: ${anonMessage}`);
+                try {
+                    await mentionedUser.send(`You have a new anonymous message from **${userHandle.handle}**: ${anonMessage}`);
+                } catch (error) {
+                    if (error.code === 50007) { // Discord API error: Cannot send messages to this user
+                        console.error(`Could not send DM to user ${mentionedUser.id}. They may have DMs disabled or blocked the bot.`);
+                        await message.reply({
+                            content: `I couldn't send a DM to the user you mentioned. They may have DMs disabled or blocked the bot.`,
+                            ephemeral: true // Only visible to the sender
+                        });
+                    } else {
+                        console.error(`Failed to send DM: ${error}`);
+                    }
+                }
             }
         }
+
     }
 });
 
