@@ -27,8 +27,8 @@ const client = new Client({
 });
 
 const token = process.env.BOT_TOKEN;
-const clientId = '1289536538333548606'; // Ensure this is a string
-const guildId = '1121136965622956132'; // Ensure this is a string
+const clientId = process.env.CLIENT_ID;
+const guildId = process.env.GUILD_ID;
 
 // Register slash commands
 const commands = [
@@ -482,5 +482,5 @@ client.on('messageCreate', async message => {
     }
 });
 
-
+// Log in to Discord with your client's token
 client.login(token);
