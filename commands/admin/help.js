@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { hasAdminAccess } = require('../utils/permissions');
+const { hasAdminAccess } = require('../../utils/permissions');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -25,8 +25,7 @@ module.exports = {
                 { name: '/setchannel', value: 'Set the dark web channel (admin only)', inline: false },
                 { name: '!anon <message>', value: 'Send an anonymous message in the configured channel', inline: false }
             )
-            .setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
-
+           
         // Add admin commands if the user is an admin
         if (isAdmin) {
             embed.addFields(
@@ -34,6 +33,8 @@ module.exports = {
                 { name: '/admin manage add/remove', value: 'Manage admin access', inline: false }
             );
         }
+
+        embed.setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
 
         // Reply ephemerally so only the user sees it
         await interaction.reply({ embeds: [embed], ephemeral: true });
