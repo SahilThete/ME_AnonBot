@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Anonymous messaging bot for GTA RP servers",
   "main": "bot.js",
-  "type": "module",
   "scripts": {
     "start": "node bot.js",
     "deploy": "node deploy-commands.js"
@@ -18,10 +17,10 @@
   "author": "BLACKSTAR",
   "license": "MIT",
   "dependencies": {
-    "@discordjs/rest": "^2.4.0",
+    "@discordjs/rest": "^2.5.0",
     "discord-api-types": "^0.37.101",
-    "discord.js": "^14.16.2",
-    "dotenv": "^16.4.5",
+    "discord.js": "^14.19.2",
+    "dotenv": "^16.5.0",
     "mongoose": "^8.14.1"
   }
 }
