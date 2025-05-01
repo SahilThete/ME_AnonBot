@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js'); 
+const { EmbedBuilder, MessageFlags } = require('discord.js');
 const { UserHandle } = require('../../db');
 
 module.exports = {
@@ -37,12 +37,15 @@ module.exports = {
                 }
             }
 
-            await interaction.reply({ embeds: [embed], ephemeral: true });
+            await interaction.reply({
+                embeds: [embed],
+                flags: MessageFlags.Ephemeral, 
+            });
         } catch (error) {
             console.error('Error fetching handles:', error);
             return interaction.reply({
                 content: 'An error occurred while retrieving anonymous handles.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral, 
             });
         }
     },
