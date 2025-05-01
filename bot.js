@@ -178,7 +178,13 @@ client.on('interactionCreate', async interaction => {
         }
 
         // Save the handle for the user, scoped to the current guild
-        const userHandle = new UserHandle({ userId, guildId, handle: customHandle });
+        const userHandle = new UserHandle({ 
+            userId, 
+            guildId, 
+            handle: customHandle, 
+            createdAt: new Date()  // Save the current date and time when the handle is created
+        });
+
         await userHandle.save();
 
         await interaction.reply({
@@ -222,6 +228,14 @@ client.on('interactionCreate', async interaction => {
 
         // Get the selected channel
         const channel = interaction.options.getChannel('channel');
+        
+        // Validate the selected channel type (only text channels allowed)
+        if (!channel.isTextBased()) {
+            return await interaction.reply({
+                content: 'Please select a valid text channel.',
+                ephemeral: true,
+            });
+        }
 
         // Store the dark web channel in the database
         let darkWebChannel = await DarkWebChannel.findOne({ guildId: interaction.guild.id });
@@ -283,21 +297,50 @@ client.on('interactionCreate', async interaction => {
                     ephemeral: true,
                 });
             }
-
+        
             // Fetch all handles for the current guild from the database
             const handles = await UserHandle.find({ guildId: interaction.guild.id });
-
+        
             const embed = new EmbedBuilder()
                 .setColor('#0099ff')
                 .setTitle('All Anonymous Handles');
+        
+            // Use for...of to handle async operations correctly
+            for (const [index, handle] of handles.entries()) {
+                try {
+                    // Fetch the user object from Discord API using userId
+                    const user = await interaction.guild.members.fetch(handle.userId);
+        
+                    // Validate if createdAt exists
+                    const creationDate = handle.createdAt ? handle.createdAt.toLocaleString() : 'Unknown date'; // Fallback if createdAt is undefined
+        
+                    // Add the index, clickable username, handle, and creation date to the embed
+                    embed.addFields({
+                        // name: `**${index + 1}. User:** <@${user.user.id}>`,
+                        name: `**${index + 1}. Username:** ${user.user.username}`,
+                        value: `**Handle:** ${handle.handle}\n**Created on:** ${creationDate}`,
+                        inline: false,
+                    });
+                } catch (error) {
+                    console.error(`Error fetching username for userId: ${handle.userId}`, error);
+                    // Optionally, add a fallback for failed fetches
+                    embed.addFields({
+                        name: `**${index + 1}. User ID:** ${handle.userId}`,
+                        value: `**Handle:** ${handle.handle}\n**Error fetching username**`,
+                        inline: false,
+                    });
+                }
+            }
+        
+            await interaction.reply({ embeds: [embed], ephemeral: false });        
 
-            handles.forEach(handle => {
-                embed.addFields(
-                    { name: `**User ID:** ${handle.userId}`, value: `**Handle:** ${handle.handle}`, inline: false }
-                );
-            });
+            // handles.forEach(handle => {
+            //     embed.addFields(
+            //         { name: `**User ID:** ${handle.userId}`, value: `**Handle:** ${handle.handle}`, inline: false }
+            //     );
+            // });
 
-            await interaction.reply({ embeds: [embed] });
+            // await interaction.reply({ embeds: [embed] });
         }
 
 

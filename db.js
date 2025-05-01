@@ -8,6 +8,8 @@ const userHandleSchema = new mongoose.Schema({
     guildId: { type: String, required: true },  // New field for guild ID
     userId: { type: String, required: true },
     handle: { type: String, required: true },
+}, {
+    timestamps: true // This adds createdAt and updatedAt automatically
 });
 const UserHandle = mongoose.model('UserHandle', userHandleSchema);
 
