@@ -1,19 +1,27 @@
 {
   "name": "me_anonbot",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Anonymous messaging bot for GTA RP servers",
+  "main": "bot.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node bot.js",
+    "deploy": "node deploy-commands.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": [
+    "discord",
+    "discord-bot",
+    "anon",
+    "whitelist",
+    "gta-rp"
+  ],
+  "author": "BLACKSTAR",
+  "license": "MIT",
   "dependencies": {
     "@discordjs/rest": "^2.4.0",
     "discord-api-types": "^0.37.101",
     "discord.js": "^14.16.2",
     "dotenv": "^16.4.5",
-    "mongoose": "^8.7.0"
+    "mongoose": "^8.14.1"
   }
 }
