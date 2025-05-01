@@ -11,7 +11,7 @@ module.exports = {
         } catch (error) {
             console.error(error);
             if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: 'There was an error executing that command.', ephemeral: true });
+                await interaction.reply({ content: 'There was an error executing that command.', flags: MessageFlags.Ephemeral });
             }
         }
     }

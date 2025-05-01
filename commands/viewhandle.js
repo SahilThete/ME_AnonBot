@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { MessageFlags, SlashCommandBuilder } = require('discord.js');
 const { UserHandle } = require('../db');
 
 module.exports = {
@@ -15,13 +15,13 @@ module.exports = {
         if (!userHandle) {
             return interaction.reply({
                 content: "You haven't set a handle yet. Use `/create` to set one.",
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
         }
 
         return interaction.reply({
             content: `Your current anonymous handle is **${userHandle.handle}**.`,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
     },
 };

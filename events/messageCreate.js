@@ -1,4 +1,5 @@
 const { DarkWebChannel, UserHandle } = require('../db');
+const { MessageFlags } = require('discord.js');
 
 module.exports = {
     name: 'messageCreate',
@@ -11,11 +12,11 @@ module.exports = {
         const userHandle = await UserHandle.findOne({ userId: message.author.id });
 
         if (!darkWeb || !userHandle) {
-            return message.reply({ content: 'Setup not complete or handle missing.', ephemeral: true });
+            return message.reply({ content: 'Setup not complete or handle missing.', flags: MessageFlags.Ephemeral });
         }
 
         if (message.channel.id !== darkWeb.channelId) {
-            return message.reply({ content: `Use <#${darkWeb.channelId}> for anonymous messages.`, ephemeral: true });
+            return message.reply({ content: `Use <#${darkWeb.channelId}> for anonymous messages.`, flags: MessageFlags.Ephemeral });
         }
 
         await message.channel.send(`**${userHandle.handle}:** ${anonMessage}`);

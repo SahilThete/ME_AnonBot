@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { MessageFlags, SlashCommandBuilder } = require('discord.js');
 const { UserHandle } = require('../db');
 
 module.exports = {
@@ -20,7 +20,7 @@ module.exports = {
         if (!handlePattern.test(customHandle)) {
             return interaction.reply({
                 content: 'Invalid handle format! Use "anonXXXX" where XXXX is 4 digits.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
         }
 
@@ -28,7 +28,7 @@ module.exports = {
         if (existingHandle) {
             return interaction.reply({
                 content: 'This handle is already taken in this server!',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
         }
 
@@ -37,7 +37,7 @@ module.exports = {
 
         return interaction.reply({
             content: `Your anonymous handle has been set to **${customHandle}**!`,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
     },
 };

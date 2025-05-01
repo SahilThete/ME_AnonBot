@@ -1,4 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, MessageFlags, SlashCommandBuilder } = require('discord.js');
+
 const { hasAdminAccess } = require('../../utils/permissions');
 
 module.exports = {
@@ -37,6 +38,6 @@ module.exports = {
         embed.setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
 
         // Reply ephemerally so only the user sees it
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     },
 };

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ChannelType } = require('discord.js');
+const { ChannelType, MessageFlags, SlashCommandBuilder } = require('discord.js');
 const { DarkWebChannel } = require('../db');
 const { hasAdminAccess } = require('../utils/permissions');
 
@@ -23,7 +23,7 @@ module.exports = {
         if (!isAdmin) {
             return interaction.reply({
                 content: 'You do not have permission to set the channel.',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
         }
 

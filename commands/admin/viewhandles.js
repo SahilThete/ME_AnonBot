@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, MessageFlag } = require('discord.js');
 const { UserHandle } = require('../../db');
 const { hasAdminAccess } = require('../../utils/permissions');
 
@@ -8,7 +8,7 @@ module.exports = {
         if (!canAccess) {
             return interaction.reply({
                 content: 'You do not have permission to use this command.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 

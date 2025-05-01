@@ -1,4 +1,5 @@
 const { Admin, AdminAction } = require('../../db');
+const { MessageFlags } = require('discord.js');
 const { hasAdminAccess } = require('../../utils/permissions');
 
 module.exports = {
@@ -7,7 +8,7 @@ module.exports = {
         if (!isAllowed) {
             return interaction.reply({
                 content: 'You do not have permission to manage admins.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -17,7 +18,7 @@ module.exports = {
         if (subcommand === 'add') {
             const exists = await Admin.findOne({ userId: targetUser.id });
             if (exists) {
-                return interaction.reply({ content: `<@${targetUser.id}> is already an admin.`, ephemeral: true });
+                return interaction.reply({ content: `<@${targetUser.id}> is already an admin.`, flags: MessageFlags.Ephemeral });
             }
 
             await new Admin({ userId: targetUser.id }).save();
@@ -28,13 +29,13 @@ module.exports = {
                 guildId
             }).save();
 
-            return interaction.reply({ content: `<@${targetUser.id}> has been added as an admin.`, ephemeral: true });
+            return interaction.reply({ content: `<@${targetUser.id}> has been added as an admin.`, flags: MessageFlags.Ephemeral });
         }
 
         if (subcommand === 'remove') {
             const exists = await Admin.findOne({ userId: targetUser.id });
             if (!exists) {
-                return interaction.reply({ content: `<@${targetUser.id}> is not an admin.`, ephemeral: true });
+                return interaction.reply({ content: `<@${targetUser.id}> is not an admin.`, flags: MessageFlags.Ephemeral });
             }
 
             await Admin.deleteOne({ userId: targetUser.id });
@@ -45,7 +46,7 @@ module.exports = {
                 guildId
             }).save();
 
-            return interaction.reply({ content: `<@${targetUser.id}> has been removed from admins.`, ephemeral: true });
+            return interaction.reply({ content: `<@${targetUser.id}> has been removed from admins.`, flags: MessageFlags.Ephemeral });
         }
     }
 };

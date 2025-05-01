@@ -59,3 +59,7 @@ for (const file of eventFiles) {
 
 // Start the bot
 client.login(process.env.BOT_TOKEN);
+
+client.once('ready', () => {
+    console.log(`🤖 ${client.user.tag} is now online!`);
+});
