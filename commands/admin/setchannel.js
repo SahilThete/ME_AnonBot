@@ -1,6 +1,6 @@
 const { ChannelType, MessageFlags, SlashCommandBuilder } = require('discord.js');
-const { DarkWebChannel } = require('../db');
-const { hasAdminAccess } = require('../utils/permissions');
+const { DarkWebChannel } = require('../../db');
+const { hasAdminAccess } = require('../../utils/permissions');
 
 module.exports = {
     data: new SlashCommandBuilder()

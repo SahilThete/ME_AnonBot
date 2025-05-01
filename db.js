@@ -22,6 +22,16 @@ const darkWebChannelSchema = new mongoose.Schema({
 });
 const DarkWebChannel = mongoose.model('DarkWebChannel', darkWebChannelSchema);
 
+// Create a schema for storing Admin
+const adminSchema = new mongoose.Schema({
+    userId: { type: String, required: true },
+    guildId: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
+adminSchema.index({ userId: 1, guildId: 1 }, { unique: true });
+const Admin = mongoose.model('Admin', adminSchema);
+
+
 // Create a schema for the logging Admin Actions
 const adminActionSchema = new mongoose.Schema({
     actionType: { type: String, required: true }, // Example: 'add', 'remove'
