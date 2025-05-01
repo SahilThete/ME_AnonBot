@@ -1,5 +1,5 @@
 const { DarkWebChannel, UserHandle } = require('../db');
-const { MessageFlags } = require('discord.js');
+const { MessageFlags, PermissionsBitField  } = require('discord.js');
 
 module.exports = {
     name: 'messageCreate',
@@ -50,7 +50,7 @@ module.exports = {
         try {
             await message.channel.send(`**${userHandle.handle}:** ${anonMessage}`);
             
-            if (message.guild.members.me.permissions.has('MANAGE_MESSAGES')) {
+            if (message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
                 await message.delete();
             } else {
                 console.warn('Bot lacks permission to delete messages.');
