@@ -7,7 +7,7 @@ module.exports = {
         .setDescription('Admin commands')
         .addSubcommand(sub =>
             sub.setName('viewhandles')
-                .setDescription('View all anonymous handles')
+                .setDescription('View all anonymous handles in the server')
         )
         .addSubcommandGroup(group =>
             group.setName('manage')
@@ -49,17 +49,16 @@ module.exports = {
 
             // Fetch subcommand and subcommand group
             const subcommand = interaction.options.getSubcommand();
-            const subcommandGroup = interaction.options.getSubcommandGroup(false); // Optional group
+            const subcommandGroup = interaction.options.getSubcommandGroup(false);              // Optional group
 
-            // Handle subcommands and groups
             if (!subcommandGroup) {
                 if (subcommand === 'viewhandles') {
                     console.log(`Executing subcommand: viewhandles`);
-                    return require('./viewhandles').execute(interaction, client);
+                    return require('./viewhandles').execute(interaction, client);               // Delegate to viewhandles.js
                 }
             } else if (subcommandGroup === 'manage') {
                 console.log(`Executing subcommand group: manage, subcommand: ${subcommand}`);
-                return require('./manage').execute(interaction, client, subcommand);
+                return require('./manage').execute(interaction, client, subcommand);            // Delegate to manage.js
             }
 
             // Fallback for unknown subcommands

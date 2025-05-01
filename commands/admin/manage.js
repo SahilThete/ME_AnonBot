@@ -1,36 +1,14 @@
-const { SlashCommandBuilder } = require('discord.js');
 const { Admin, AdminAction } = require('../../db');
 const { hasAdminAccess } = require('../../utils/permissions');
 
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('manage')
-        .setDescription('Manage admin access')
-        .addSubcommand(subcommand =>
-            subcommand.setName('add')
-                .setDescription('Add a user to the admin list')
-                .addUserOption(option =>
-                    option.setName('user')
-                        .setDescription('The user to add as an admin')
-                        .setRequired(true))
-        )
-        .addSubcommand(subcommand =>
-            subcommand.setName('remove')
-                .setDescription('Remove a user from the admin list')
-                .addUserOption(option =>
-                    option.setName('user')
-                        .setDescription('The user to remove as an admin')
-                        .setRequired(true))
-        ),
-
     /**
      * @param {import('discord.js').CommandInteraction} interaction
      * @param {import('discord.js').Client} client
+     * @param {string} subcommand - The specific subcommand being executed (add/remove)
      */
-    async execute(interaction, client) {
+    async execute(interaction, client, subcommand) {
         try {
-            // Get the subcommand (add/remove)
-            const subcommand = interaction.options.getSubcommand();
             const isAllowed = await hasAdminAccess(interaction.user, interaction.member);
 
             // Permission check for the user
@@ -46,7 +24,6 @@ module.exports = {
             const guildId = interaction.guild.id;
 
             if (subcommand === 'add') {
-                // Check if the target user is already an admin
                 const exists = await Admin.findOne({ userId: targetUser.id });
                 if (exists) {
                     return interaction.reply({
@@ -55,10 +32,7 @@ module.exports = {
                     });
                 }
 
-                // Add the user as admin in the database
                 await new Admin({ userId: targetUser.id }).save();
-
-                // Log the action in the AdminAction collection
                 await new AdminAction({
                     actionType: 'add',
                     performedBy: interaction.user.id,
@@ -73,7 +47,6 @@ module.exports = {
             }
 
             if (subcommand === 'remove') {
-                // Check if the target user is an admin
                 const exists = await Admin.findOne({ userId: targetUser.id });
                 if (!exists) {
                     return interaction.reply({
@@ -82,10 +55,7 @@ module.exports = {
                     });
                 }
 
-                // Remove the user from the admin database
                 await Admin.deleteOne({ userId: targetUser.id });
-
-                // Log the action in the AdminAction collection
                 await new AdminAction({
                     actionType: 'remove',
                     performedBy: interaction.user.id,
@@ -99,7 +69,6 @@ module.exports = {
                 });
             }
         } catch (error) {
-            // Log and handle any errors
             console.error('Error managing admins:', error);
             return interaction.reply({
                 content: 'An error occurred while managing admins. Please try again later.',

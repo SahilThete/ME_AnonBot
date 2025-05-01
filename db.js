@@ -35,11 +35,11 @@ const Admin = mongoose.model('Admin', adminSchema);
 
 // Create a schema for the logging Admin Actions
 const adminActionSchema = new mongoose.Schema({
-    actionType: { type: String, required: true }, // Example: 'add', 'remove'
-    performedBy: { type: String, required: true }, // ID of the user who performed the action
-    targetUserId: { type: String, required: true }, // ID of the user affected (added/removed)
-    timestamp: { type: Date, default: Date.now }, // Timestamp of when the action occurred
-    guildId: { type: String, required: true }, // ID of the server/guild
+    actionType: { type: String, required: true },       // Example: 'add', 'remove'
+    performedBy: { type: String, required: true },      // ID of the user who performed the action
+    targetUserId: { type: String, required: true },     // ID of the user affected (added/removed)
+    timestamp: { type: Date, default: Date.now },       // Timestamp of when the action occurred
+    guildId: { type: String, required: true },          // ID of the server/guild
 });
 const AdminAction = mongoose.model('AdminAction', adminActionSchema);
 
