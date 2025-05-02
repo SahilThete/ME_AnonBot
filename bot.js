@@ -2,7 +2,6 @@ const { Client, GatewayIntentBits, Collection } = require('discord.js');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-// const mongoose = require('mongoose');
 
 const client = new Client({
     intents: [
@@ -12,11 +11,6 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
     ],
 });
-
-// // connect to MongoDB
-// mongoose.connect(process.env.MONGODB_URI)
-//     .then(() => console.log('🟢 MongoDB connected'))
-//     .catch(err => console.error('🔴 MongoDB connection failed:', err));
 
 // Command collection
 client.commands = new Collection();

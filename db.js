@@ -3,8 +3,8 @@ require('dotenv').config();
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('✅ MongoDB connected successfully!'))
-.catch(err => console.error('❌ Error connecting to MongoDB:', err));
+.then(() => console.log('🟢 MongoDB connected successfully!'))
+.catch(err => console.error('🔴 Error connecting to MongoDB:', err));
 
 // Create a schema for the storing user handle
 const userHandleSchema = new mongoose.Schema({
