@@ -1,79 +1,87 @@
+const { MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
 const { Admin, AdminAction } = require('../../db');
 const { hasAdminAccess } = require('../../utils/permissions');
 
 module.exports = {
-    /**
-     * @param {import('discord.js').CommandInteraction} interaction
-     * @param {import('discord.js').Client} client
-     * @param {string} subcommand - The specific subcommand being executed (add/remove)
-     */
-    async execute(interaction, client, subcommand) {
-        try {
-            const isAllowed = await hasAdminAccess(interaction.user, interaction.member);
+    data: new SlashCommandSubcommandBuilder()
+        .setName('manage')
+        .setDescription('Manage admin users (admin-only)')
+        .addUserOption(opt =>
+            opt.setName('add')
+                .setDescription('User to add as admin')
+                .setRequired(false)
+        )
+        .addUserOption(opt =>
+            opt.setName('remove')
+                .setDescription('User to remove from admin')
+                .setRequired(false)
+        ),
 
-            // Permission check for the user
-            if (!isAllowed) {
-                return interaction.reply({
-                    content: 'You do not have permission to manage admins.',
-                    ephemeral: true
-                });
-            }
+    async execute(interaction) {
+        const guildId = interaction.guild.id;
+        const addUser = interaction.options.getUser('add');
+        const removeUser = interaction.options.getUser('remove');
 
-            // Fetch the target user and guild ID
-            const targetUser = interaction.options.getUser('user');
-            const guildId = interaction.guild.id;
-
-            if (subcommand === 'add') {
-                const exists = await Admin.findOne({ userId: targetUser.id });
-                if (exists) {
-                    return interaction.reply({
-                        content: `<@${targetUser.id}> is already an admin.`,
-                        ephemeral: true
-                    });
-                }
-
-                await new Admin({ userId: targetUser.id }).save();
-                await new AdminAction({
-                    actionType: 'add',
-                    performedBy: interaction.user.id,
-                    targetUserId: targetUser.id,
-                    guildId
-                }).save();
-
-                return interaction.reply({
-                    content: `<@${targetUser.id}> has been added as an admin.`,
-                    ephemeral: true
-                });
-            }
-
-            if (subcommand === 'remove') {
-                const exists = await Admin.findOne({ userId: targetUser.id });
-                if (!exists) {
-                    return interaction.reply({
-                        content: `<@${targetUser.id}> is not an admin.`,
-                        ephemeral: true
-                    });
-                }
-
-                await Admin.deleteOne({ userId: targetUser.id });
-                await new AdminAction({
-                    actionType: 'remove',
-                    performedBy: interaction.user.id,
-                    targetUserId: targetUser.id,
-                    guildId
-                }).save();
-
-                return interaction.reply({
-                    content: `<@${targetUser.id}> has been removed from admins.`,
-                    ephemeral: true
-                });
-            }
-        } catch (error) {
-            console.error('Error managing admins:', error);
+        const isAdmin = await hasAdminAccess(interaction.user, interaction.member);
+        if (!isAdmin) {
             return interaction.reply({
-                content: 'An error occurred while managing admins. Please try again later.',
-                ephemeral: true
+                content: 'You do not have permission to manage admins.',
+                flags: MessageFlags.Ephemeral
             });
         }
-    },
+
+        // ADD ADMIN
+        if (addUser) {
+            const existing = await Admin.findOne({ userId: addUser.id, guildId });
+            if (existing) {
+                return interaction.reply({
+                    content: `<@${addUser.id}> is already an admin.`,
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            await Admin.create({ userId: addUser.id, guildId }); 
+            await AdminAction.create({
+                actionType: 'add',
+                performedBy: interaction.user.id,
+                targetUserId: addUser.id,
+                guildId
+            });
+
+            return interaction.reply({
+                content: `<@${addUser.id}> has been added as admin.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        // REMOVE ADMIN
+        if (removeUser) {
+            const existing = await Admin.findOne({ userId: removeUser.id, guildId });
+            if (!existing) {
+                return interaction.reply({
+                    content: `<@${removeUser.id}> is not an admin.`,
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            await Admin.deleteOne({ userId: removeUser.id, guildId }); 
+            await AdminAction.create({
+                actionType: 'remove',
+                performedBy: interaction.user.id,
+                targetUserId: removeUser.id,
+                guildId
+            });
+
+            return interaction.reply({
+                content: `<@${removeUser.id}> has been removed from admin.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        // NEITHER ADD NOR REMOVE USED
+        return interaction.reply({
+            content: 'Please specify a user to add or remove.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
 };

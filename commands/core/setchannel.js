@@ -5,7 +5,7 @@ const { hasAdminAccess } = require('../../utils/permissions');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('setchannel')
-        .setDescription('Set the channel for anonymous messaging')
+        .setDescription('Set the channel for anonymous messaging (admin-only)')
         .addChannelOption(option =>
             option.setName('channel')
                 .setDescription('Channel to set as the anonymous message destination')

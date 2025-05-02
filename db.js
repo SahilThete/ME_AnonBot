@@ -43,4 +43,4 @@ const adminActionSchema = new mongoose.Schema({
 });
 const AdminAction = mongoose.model('AdminAction', adminActionSchema);
 
-module.exports = { UserHandle, DarkWebChannel, AdminAction };
+module.exports = { UserHandle, DarkWebChannel, Admin, AdminAction };

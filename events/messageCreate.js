@@ -53,13 +53,13 @@ module.exports = {
             
             // Check if the bot has permission to delete messages
             if (message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-                await message.delete(); // Delete the original message for anonymity
+                await message.delete();             // Delete the original message for anonymity
             } else {
                 console.warn('Bot lacks permission to delete messages.');
             }
         
             // Check if the message contains a mentioned handle (e.g., 'anonXXXX')
-            const mentioned = anonMessage.match(/anon\d{4}/); // Regex to match 'anonXXXX'
+            const mentioned = anonMessage.match(/anon\d{4}/);           // Regex to match 'anonXXXX'
         
             if (mentioned) {
                 const mentionedHandle = mentioned[0];
@@ -83,7 +83,7 @@ module.exports = {
                             // Notify the sender about DM failure
                             await message.reply({
                                 content: `I couldn't send a DM to the user you mentioned. They may have DMs disabled or blocked the bot.`,
-                                ephemeral: true
+                                flags: MessageFlags.Ephemeral
                             });
                         } else {
                             console.error('Error sending anonymous DM:', err);

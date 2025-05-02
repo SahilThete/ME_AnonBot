@@ -1,5 +1,5 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-const { hasAdminAccess } = require('../utils/permissions');
+const { EmbedBuilder, MessageFlags, SlashCommandBuilder } = require('discord.js');
+const { hasAdminAccess } = require('../../utils/permissions');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -38,12 +38,13 @@ module.exports = {
             embed.setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
 
             // Reply conditionally (ephemeral for admins, public for others)
-            await interaction.reply({ embeds: [embed], ephemeral: isAdmin });
+            await interaction.reply({embeds: [embed], flags: isAdmin ? MessageFlags.Ephemeral : undefined});
+            
         } catch (error) {
             console.error('Error executing help command:', error);
             await interaction.reply({
                 content: 'An error occurred while retrieving the help information.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     },
