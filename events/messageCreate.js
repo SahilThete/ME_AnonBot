@@ -3,7 +3,7 @@ const { MessageFlags, PermissionsBitField  } = require('discord.js');
 
 module.exports = {
     name: 'messageCreate',
-    async execute(message, client) {
+    async execute(message) {
         if (message.author.bot || !message.guild) return;
         if (!message.content.startsWith('!anon')) return;
 
@@ -69,22 +69,31 @@ module.exports = {
         
                 if (targetHandle) {
                     try {
+                        // Ensure we have a client reference from the message
+                        const client = message.client;
+                        if (!client) throw new Error('Message has no client reference');
+
                         // Fetch the user associated with the mentioned handle
                         const targetUser = await client.users.fetch(targetHandle.userId);
-                        
+
                         // Send a DM notification to the mentioned user
                         await targetUser.send(
                             `You have a new anonymous message from **${userHandle.handle}**: ${anonMessage}`
                         );
                     } catch (err) {
-                        if (err.code === 50007) {
-                            console.error(`DMs blocked for user ${targetHandle.userId}`);
-                            
+                        // discord.js sets code 50007 when DMs are disabled for the recipient
+                        const code = err && err.code;
+                        if (code === 50007) {
+                            console.info(`DMs blocked for user ${targetHandle.userId}`);
+
                             // Notify the sender about DM failure
                             await message.reply({
                                 content: `I couldn't send a DM to the user you mentioned. They may have DMs disabled or blocked the bot.`,
                                 flags: MessageFlags.Ephemeral
                             });
+                        } else if (err.message && err.message.includes('Message has no client')) {
+                            console.error('Internal error: message.client is undefined. Event registration may be passing wrong args.');
+                            console.error(err);
                         } else {
                             console.error('Error sending anonymous DM:', err);
                         }
