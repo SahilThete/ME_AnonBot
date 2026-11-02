@@ -14,8 +14,8 @@ async function hasAdminAccess(user, member) {
             return true; // Superadmins have full access
         }
 
-        // Check if the user is listed as a bot admin in the database
-        const isBotAdmin = await Admin.findOne({ userId: user.id });
+        // Check if the user is a bot admin in the database
+        const isBotAdmin = await Admin.findOne({ userId: user.id, guildId: member.guild.id});
 
         // Check if the user has the 'MANAGE_GUILD' permission (secondary bot-admin permission)
         const hasManageGuildPerms = member.permissions.has('MANAGE_GUILD');
