@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const {Client, GatewayIntentBits, Collection} = require('discord.js');
 
- const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 
@@ -85,7 +85,7 @@ function loadEvents(directory) {
     }
 }
 
-// Startup
+// Start the bot
 async function startBot() {
     try {
         // Validate environment variables
@@ -104,13 +104,13 @@ async function startBot() {
         // Connect MongoDB first
         await mongoose.connect(process.env.MONGODB_URI);
 
-        console.log('✅ MongoDB connected successfully!');
+        console.log('\n🗄️ MongoDB connected successfully!');
 
         // Login to Discord only after successful DB connection
         await client.login(process.env.BOT_TOKEN);
 
     } catch (error) {
-        console.error('❌ Bot startup failed:', error.message);
+        console.error('\n❌ Bot startup failed:', error.message);
 
         await mongoose.disconnect().catch(() => {});
 
@@ -121,8 +121,38 @@ async function startBot() {
 }
 
 client.once('clientReady', () => {
-    console.log(`🤖 ${client.user.tag} is now online!`);
+    console.log(`\n🤖 ${client.user.tag} is now online!`);
     console.log(`📦 Registered commands: ${client.commands.size}`);
 });
 
 startBot();
+
+// Graceful shutdown
+let shuttingDown = false;
+
+async function shutdown(signal) {
+    if (shuttingDown) return;
+
+    shuttingDown = true;
+
+    console.log(`\n➜] Received ${signal}. Shutting down bot...`);
+
+    try {
+        client.destroy();
+
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect();
+        }
+
+        console.log('\n📴 Bot shutdown completed.');
+
+        process.exit(0);
+
+    } catch (error) {
+        console.error('\n❌ Error during shutdown:', error);
+        process.exit(1);
+    }
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
