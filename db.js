@@ -1,46 +1,62 @@
 const mongoose = require('mongoose');
-require('dotenv').config();
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('🟢 MongoDB connected successfully!'))
-.catch(err => console.error('🔴 Error connecting to MongoDB:', err));
-
-// Create a schema for the storing user handle
+// User handle schema
 const userHandleSchema = new mongoose.Schema({
-    guildId: { type: String, required: true },  // New field for guild ID
+    guildId: { type: String, required: true },
     userId: { type: String, required: true },
     handle: { type: String, required: true },
 }, {
-    timestamps: true // This adds createdAt and updatedAt automatically
+    timestamps: true
 });
+
+// Enforce one handle per user per guild
+userHandleSchema.index(
+    { guildId: 1, userId: 1 },
+    { unique: true }
+);
+
+// Enforce unique handles within each guild
+userHandleSchema.index(
+    { guildId: 1, handle: 1 },
+    { unique: true }
+);
+
 const UserHandle = mongoose.model('UserHandle', userHandleSchema);
 
-// Create a schema for the dark web channel
+// Anonymous channel schema
 const darkWebChannelSchema = new mongoose.Schema({
     guildId: { type: String, required: true, unique: true },
     channelId: { type: String, required: true },
 });
+
 const DarkWebChannel = mongoose.model('DarkWebChannel', darkWebChannelSchema);
 
-// Create a schema for storing Admin
+// Admin schema
 const adminSchema = new mongoose.Schema({
     userId: { type: String, required: true },
     guildId: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
 });
+
 adminSchema.index({ userId: 1, guildId: 1 }, { unique: true });
+
 const Admin = mongoose.model('Admin', adminSchema);
 
-
-// Create a schema for the logging Admin Actions
+// Admin action logging schema
 const adminActionSchema = new mongoose.Schema({
-    actionType: { type: String, required: true },       // Example: 'add', 'remove'
-    performedBy: { type: String, required: true },      // ID of the user who performed the action
-    targetUserId: { type: String, required: true },     // ID of the user affected (added/removed)
-    timestamp: { type: Date, default: Date.now },       // Timestamp of when the action occurred
-    guildId: { type: String, required: true },          // ID of the server/guild
+    actionType: { type: String, required: true },
+    performedBy: { type: String, required: true },
+    targetUserId: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    guildId: { type: String, required: true },
 });
+
 const AdminAction = mongoose.model('AdminAction', adminActionSchema);
 
-module.exports = { UserHandle, DarkWebChannel, Admin, AdminAction };
+// Export models only. MongoDB connection is managed by bot.js.
+module.exports = {
+    UserHandle,
+    DarkWebChannel,
+    Admin,
+    AdminAction
+};
