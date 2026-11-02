@@ -1,17 +1,18 @@
 const { DarkWebChannel, UserHandle } = require('../db');
-const { MessageFlags, PermissionsBitField  } = require('discord.js');
+const { PermissionsBitField } = require('discord.js');
 
 module.exports = {
     name: 'messageCreate',
     async execute(message) {
         if (message.author.bot || !message.guild) return;
-        if (!message.content.startsWith('!anon')) return;
 
-        const anonMessage = message.content.slice(6).trim();
+        const anonCommandMatch = message.content.match(/^!anon(?:\s+|$)/i);
+        if (!anonCommandMatch) return;
+
+        const anonMessage = message.content.slice(anonCommandMatch[0].length).trim();
         if (!anonMessage) {
             return message.reply({
-                content: 'Please provide a message to send anonymously.',
-                flags: MessageFlags.Ephemeral, 
+                content: 'Please provide a message to send anonymously.'
             });
         }
 
@@ -22,40 +23,52 @@ module.exports = {
         } catch (error) {
             console.error('Database error:', error);
             return message.reply({
-                content: 'An error occurred while checking setup. Please try again later.',
-                flags: MessageFlags.Ephemeral,
+                content: 'An error occurred while checking setup. Please try again later.'
             });
         }
 
         if (!darkWeb) {
             return message.reply({
-                content: 'Anonymous message channel is not set up in this server.',
-                flags: MessageFlags.Ephemeral,
+                content: 'Anonymous message channel is not set up in this server.'
             });
         }
         if (!userHandle) {
             return message.reply({
-                content: 'You need to create an anonymous handle first. Use `/create` to set one up.',
-                flags: MessageFlags.Ephemeral,
+                content: 'You need to create an anonymous handle first. Use `/create` to set one up.'
             });
         }
 
         if (message.channel.id !== darkWeb.channelId) {
             return message.reply({
-                content: `Use <#${darkWeb.channelId}> for anonymous messages.`,
-                flags: MessageFlags.Ephemeral,
+                content: `Use <#${darkWeb.channelId}> for anonymous messages.`
             });
         }
 
         try {
             // Send the anonymous message in the designated channel
-            await message.channel.send(`**${userHandle.handle}:** ${anonMessage}`);
-            
+            await message.channel.send({
+                content: `**${userHandle.handle}:** ${anonMessage}`,
+                allowedMentions: {
+                    parse: []
+                }
+            });
+
             // Check if the bot has permission to delete messages
-            if (message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-                await message.delete();             // Delete the original message for anonymity
+            const botMember = message.guild.members.me;
+            const canDelete = message.channel
+                .permissionsFor(botMember)
+                ?.has(PermissionsBitField.Flags.ManageMessages);
+
+            if (canDelete) {
+                try {
+                    await message.delete();
+                } catch (error) {
+                    console.error('Failed to delete original anonymous message:', error);
+                }
             } else {
-                console.warn('Bot lacks permission to delete messages.');
+                console.warn(
+                    `Bot lacks ManageMessages permission in channel ${message.channel.id}`
+                );
             }
         
             // Check if the message contains a mentioned handle (e.g., 'anonXXXX')
@@ -77,9 +90,12 @@ module.exports = {
                         const targetUser = await client.users.fetch(targetHandle.userId);
 
                         // Send a DM notification to the mentioned user
-                        await targetUser.send(
-                            `You have a new anonymous message from **${userHandle.handle}**: ${anonMessage}`
-                        );
+                        await targetUser.send({
+                            content: `You have a new anonymous message from **${userHandle.handle}**: ${anonMessage}`,
+                            allowedMentions: {
+                                parse: []
+                            }
+                        });
                     } catch (err) {
                         // discord.js sets code 50007 when DMs are disabled for the recipient
                         const code = err && err.code;
@@ -88,12 +104,13 @@ module.exports = {
 
                             // Notify the sender about DM failure
                             await message.reply({
-                                content: `I couldn't send a DM to the user you mentioned. They may have DMs disabled or blocked the bot.`,
-                                flags: MessageFlags.Ephemeral
+                                content: `I couldn't send a DM to the user you mentioned. They may have DMs disabled or blocked the bot.`
                             });
+
                         } else if (err.message && err.message.includes('Message has no client')) {
                             console.error('Internal error: message.client is undefined. Event registration may be passing wrong args.');
                             console.error(err);
+                                
                         } else {
                             console.error('Error sending anonymous DM:', err);
                         }
@@ -106,8 +123,7 @@ module.exports = {
         
             // Inform the sender about the failure
             await message.reply({
-                content: 'An error occurred while processing your anonymous message. Please try again later.',
-                flags: MessageFlags.Ephemeral // Updated with flags for ephemeral response
+                content: 'An error occurred while processing your anonymous message. Please try again later.'
             });
         }
     },

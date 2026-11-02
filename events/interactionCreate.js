@@ -1,34 +1,50 @@
 const { Events, MessageFlags } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
 
 module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction) {
         if (!interaction.isChatInputCommand()) return;
 
-        const commandFolders = ['core', 'admin'];
-        let command;
+        // Get the command from the client's collection
+        const command = interaction.client.commands.get(
+            interaction.commandName
+        );
 
-        // attempt to dynamically load the command from folders
-        for (const folder of commandFolders) {
-            const commandPath = path.join(__dirname, '..', 'commands', folder, `${interaction.commandName}.js`);
-            if (fs.existsSync(commandPath)) {
-                command = require(commandPath);
-                break;
-            }
-        }
-
-        if (!command || !command.data) {
-            return interaction.reply({ content: 'Command not found.', flags: MessageFlags.Ephemeral });
+        if (!command) {
+            return interaction.reply({
+                content: 'Command not found.',
+                flags: MessageFlags.Ephemeral
+            });
         }
 
         try {
             await command.execute(interaction, interaction.client);
         } catch (error) {
-            console.error(`❌ Error executing ${interaction.commandName}:`, error);
-            if (!interaction.replied) {
-                interaction.reply({ content: 'There was an error while executing this command.', flags: MessageFlags.Ephemeral });
+            console.error(`❌ Error executing ${interaction.commandName}:`, error );
+            
+            // Attempt to reply with an error message
+            try {
+                if (interaction.deferred) {
+                    await interaction.editReply({
+                        content: 'There was an error while executing the command.',
+                        embeds: []
+                    });
+                } else if (interaction.replied) {
+                    await interaction.followUp({
+                        content: 'There was an error while executing the command.',
+                        flags: MessageFlags.Ephemeral
+                    });
+                } else {
+                    await interaction.reply({
+                        content: 'There was an error while executing the command.',
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+            } catch (replyError) {
+                console.error(
+                    'Failed to send interaction error response:',
+                    replyError
+                );
             }
         }
     }
