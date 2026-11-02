@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { UserHandle } = require('../../db');
+const { hasAdminAccess } = require('../../utils/permissions')
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -10,9 +11,32 @@ module.exports = {
    * @param {import('discord.js').CommandInteraction} interaction
    * @param {import('discord.js').Client} client
    */
-  async execute(interaction, client) {
+
+async execute(interaction) {
+    if (!interaction.inGuild()) {
+        return interaction.reply({
+            content: 'This command can only be used in a server.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    const isAdmin = await hasAdminAccess( interaction.user, interaction.member );
+
+    if (!isAdmin) {
+        return interaction.reply({
+            content: 'You do not have permission to view anonymous handles.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    await interaction.deferReply({
+        flags: MessageFlags.Ephemeral
+    });
+
     try {
-      const handles = await UserHandle.find({ guildId: interaction.guild.id });
+      const handles = await UserHandle.find({
+          guildId: interaction.guild.id
+      }).sort({ createdAt: 1 });
 
       const embed = new EmbedBuilder()
         .setColor('#0099ff')

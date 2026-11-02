@@ -1,9 +1,9 @@
-const { MessageFlags, SlashCommandSubcommandBuilder } = require('discord.js');
+const { MessageFlags, SlashCommandBuilder } = require('discord.js');
 const { Admin, AdminAction } = require('../../db');
 const { hasAdminAccess } = require('../../utils/permissions');
 
 module.exports = {
-    data: new SlashCommandSubcommandBuilder()
+    data: new SlashCommandBuilder()
         .setName('manage')
         .setDescription('Manage admin users (admin-only)')
         .addUserOption(opt =>
@@ -22,6 +22,15 @@ module.exports = {
         const addUser = interaction.options.getUser('add');
         const removeUser = interaction.options.getUser('remove');
 
+        // Ensure that only one of add or remove is specified
+        if (Boolean(addUser) === Boolean(removeUser)) {
+            return interaction.reply({
+                content: 'Specify exactly one option: either add or remove.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        // Check if the user has admin access
         const isAdmin = await hasAdminAccess(interaction.user, interaction.member);
         if (!isAdmin) {
             return interaction.reply({
