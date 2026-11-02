@@ -43,12 +43,33 @@ module.exports = {
             });
         }
 
-        // Save the new handle for the user
-        await UserHandle.create({ userId, guildId, handle, createdAt: new Date() });
+        // Create the new handle
+        try {
+            await UserHandle.create({
+                userId,
+                guildId,
+                handle
+            });
 
-        return interaction.reply({
-            content: `Your anonymous handle is successfully set to **${handle}**.`,
-            flags: MessageFlags.Ephemeral
-        });
+            return interaction.reply({
+                content: `Your anonymous handle is successfully set to **${handle}**.`,
+                flags: MessageFlags.Ephemeral
+            });
+
+        } catch (error) {
+            if (error.code === 11000) {
+                return interaction.reply({
+                    content: 'That handle is already taken, or you already have a handle in this server.',
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            console.error('Error creating anonymous handle:', error);
+
+            return interaction.reply({
+                content: 'Unable to create your handle right now. Please try again later.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
     }
 };
